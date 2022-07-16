@@ -1,5 +1,8 @@
 #include <iostream>
+#include <cstring>
 #include "cpu.h"
+
+const unsigned int FONTSET_START = 0x50;
 
 void CPU::init() {
     pc     = 0x200;
@@ -11,6 +14,13 @@ void CPU::init() {
     // Clear stack
     // Clear registers V0-VF
     // Clear memory
+
+    for (int i = 0; i < 80; ++i) {
+        memory[FONTSET_START + i] = fontset[i];
+    }
+
+    delay_timer = 0;
+    sound_timer = 0;
 }
 
 void CPU::load_game(std::string const &name) {
@@ -37,26 +47,32 @@ void CPU::pretend_cycle() {
 
 
     // parse opcode and execute
-    switch (opcode) {
-        case 0xA2F0:
-            std::cout << "opcode is 0xA2F0" << std::endl;
+    switch (opcode & 0xF000) {
+        case 0xA000:
             index = opcode & 0x0FFF;
             pc += 2; // maybe just do this under the switch? if the next opcode should be skipped, increment by 4
             break;
         case 0x00E0:
-            clear_display();
+            clear_display_00e0();
             break;
         default:
-            std::cout << "unknown opcode! " << opcode << '\n';
-            break;
+            printf("Unknown opcode: 0x%X\n", opcode);
     }
-    // update timers
+
+    if (delay_timer > 0)
+        --delay_timer;
+    if (sound_timer > 0) {
+        if (sound_timer == 1)
+            printf("BEEP!\n");
+        --sound_timer;
+    }
 }
 
 void CPU::set_keys() {
 
 }
 
-void CPU::clear_display() {
+void CPU::clear_display_00e0() {
     // opcode 00E0
+    std::memset(gfx, 0, sizeof(gfx));
 }
