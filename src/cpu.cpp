@@ -1,8 +1,8 @@
 #include <iostream>
 #include <cstring>
+#include <fstream>
+#include <vector>
 #include "cpu.h"
-
-const unsigned int FONTSET_START = 0x50;
 
 void CPU::init() {
     pc     = 0x200;
@@ -10,21 +10,38 @@ void CPU::init() {
     I      = 0;
     sp     = 0;
 
-    // Clear display
-    // Clear stack
-    // Clear V V0-VF
-    // Clear memory
+    memset(gfx, 0, sizeof(gfx));
+    memset(V, 0, sizeof(V));
+    memset(stack, 0, sizeof(stack));
+    memset(memory, 0, sizeof(memory));
 
-    for (int i = 0; i < 80; ++i) { // 0-80 is reserved in memory for fonts
-        memory[FONTSET_START + i] = fontset[i];
+    for (int i = 0; i < 80; ++i) {
+        memory[0x50 + i] = fontset[i];
     }
 
     delay_timer = 0;
     sound_timer = 0;
 }
 
-void CPU::load_game(std::string const &name) {
+bool CPU::load_game(const char* name) {
+    std::ifstream file(name, std::ios::binary | std::ios::ate);
+    if (file.is_open()) {
+        std::streampos size = file.tellg();
+        char* buffer = new char[size];
 
+        file.seekg(0, std::ios::beg);
+        file.read(buffer, size);
+        file.close();
+
+        for (int i = 0; i < size; ++i) {
+            memory[0x200 + i] = buffer[i];
+        }
+        delete[] buffer;
+
+        return true;
+    } else {
+        return false;
+    }
 }
 
 void CPU::lie_to_the_people() {
@@ -42,31 +59,49 @@ void CPU::lie_to_the_people() {
      * 10100010   1010001000000000     BIN
      */
     opcode = memory[pc] << 8 | memory[pc + 1];
-    std::cout << opcode << '\n';
+    pc += 2;
 
+    if (trace) {
+        if (opcode != 0x0000) {
+            printf("pc: %.4X opcode: %.4X sp: %.2X ", pc, opcode, sp);
+            printf("I: %.4X ", I);
+            printf("%s", "registers: ");
+            for (int i = 0; i < 15; i++)
+                printf("%.2X ", V[i]);
+
+            printf("\n");
+        }
+    }
 
     // parse opcode and execute
     switch (opcode & 0xF000) {
-        case 0x00E0:
-            clear_display_00e0();
-            break;
-        case 0x00EE:
-            return_from_subroutine_00ee();
-            break;
+        case 0x0000:
+            switch (opcode & 0x00FF) {
+                case 0x00E0:
+                    clear_display();
+                    break;
+                case 0x00EE:
+                    // return from subroutine
+                    break;
+                default:
+                    pc += 2;
+                    break;
+            }
         case 0x1000:
-            jump_to_address_1nnn();
+            //jump_to_address_1nnn();
             break;
         case 0x2000:
-            call_subroutine_at_address_2nnn();
+            //call_subroutine_at_address_2nnn();
             break;
         case 0x3000:
-            skip_next_instruction_if_vx_equals_3xnn();
+            //skip_next_instruction_if_vx_equals_3xnn();
             break;
         case 0xA000:
-            set_i_to_address_annn();
+            //set_i_to_address_annn();
             break;
         default:
-            printf("Unknown opcode: 0x%X\n", opcode);
+            //printf("Unknown opcode: 0x%X\n", opcode);
+            break;
     }
 
     if (delay_timer > 0)
@@ -79,23 +114,24 @@ void CPU::lie_to_the_people() {
     }
 }
 
-void CPU::next(bool skip) {
-    if (!skip) {
-        pc += 2;
-    } else {
-        pc += 4;
-    }
-}
-
 void CPU::set_keys() {
 
 }
 
-void CPU::clear_display_00e0() {
+void CPU::clear_display() {
     // opcode 00E0
     std::memset(gfx, 0, sizeof(gfx));
+    draw_flag = true;
+    pc += 2;
 }
 
 void CPU::set_i_to_address_annn() {
     I = opcode & 0x0FFF;
+    pc += 2;
+}
+
+void CPU::call_routine_at_address_0nnn() {
+    stack[sp] = pc;
+    sp++;
+    pc = opcode & 0x0FFF;
 }

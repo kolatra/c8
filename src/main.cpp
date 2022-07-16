@@ -2,16 +2,19 @@
 #include "cpu.h"
 
 CPU cpu;
+bool running = true;
 
 int main(int argc, char **argv) {
     std::cout << "Starting with " << argc << " arguments\n";
     cpu.init();
-    cpu.load_game("PONG");
+    if (!cpu.load_game("PONG.ch8")) {
+        return 1;
+    }
 
-    for (;;) {
+    while (running) {
         cpu.lie_to_the_people();
 
-        if (cpu.drawFlag)
+        if (cpu.draw_flag)
             std::cout << "drawing screen" << std::endl;
 
         cpu.set_keys();
