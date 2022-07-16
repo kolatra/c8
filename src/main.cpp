@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     cpu.load_game("PONG");
 
     for (;;) {
-        cpu.pretend_cycle();
+        cpu.lie_to_the_people();
 
         if (cpu.drawFlag)
             std::cout << "drawing screen" << std::endl;
