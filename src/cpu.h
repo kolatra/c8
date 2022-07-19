@@ -2,16 +2,29 @@
 #define UNTITLED_CPU_H
 #include <string>
 
-/**
-* 0x000-0x1FF - Chip 8 interpreter (contains font set in emu)
-* 0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
-* 0x200-0xFFF - Program ROM and work RAM
-*/
-
-/** store the program counter in the stack before performing a jump
- * or calling a subroutine.
- * use the stack pointer to remember which level of the stack is used
-*/
+// Memory Map:
+// +---------------+= 0xFFF (4095) End of Chip-8 RAM
+// |               |
+// |               |
+// |               |
+// |               |
+// |               |
+// | 0x200 to 0xFFF|
+// |     Chip-8    |
+// | Program / Data|
+// |     Space     |
+// |               |
+// |               |
+// |               |
+// +- - - - - - - -+= 0x600 (1536) Start of ETI 660 Chip-8 programs
+// |               |
+// |               |
+// |               |
+// +---------------+= 0x200 (512) Start of most Chip-8 programs
+// | 0x000 to 0x1FF|
+// | Reserved for  |
+// |  interpreter  |
+// +---------------+= 0x000 (0) Start of Chip-8 RAM
 class CPU {
     public:
 
@@ -47,13 +60,14 @@ class CPU {
     int      keypad[16];   // values are 0-F
     bool     draw_flag;
     bool     trace = true;
+    bool     pause_execution = false;
     void     init();
     bool     load_game(const char* name);
-    void     lie_to_the_people();
+    void     single_cycle();
     void     set_keys();
 
-private:
-    void call_routine_at_address_0nnn();
+
+private: // TODO make all of these names better
     void clear_display();
     void return_from_subroutine_00ee();
     void jump_to_address_1nnn();
@@ -61,20 +75,31 @@ private:
     void skip_next_instruction_if_vx_equals_3xnn();
     void skip_next_instruction_if_vx_not_equals_4xnn();
     void skip_next_instruction_if_vx_equals_5xy0();
-    void skip_next_instruction_if_vx_not_equals_6xnn();
     void set_vx_to_nn_6xnn();
     void add_nn_to_vx_7xnn();
-    void draw_dxyn();
-    void set_vx_to_vx_or_vy_8xy1();
-    void set_vx_to_vx_and_vy_8xy2();
-    void set_vx_to_vx_xor_vy_8xy3();
-    void add_vy_to_vx_8xy4(); // vf is set to 1 when there's a carry, and 0 otherwise
-    void subtract_vy_from_vx_8xy5(); // vf is set to 0 when there's a borrow, and 1 otherwise
+    void set_vx();
+    void or_vx_vy();
+    void and_vx_vy();
+    void xor_vx_vy();
+    void add_vx_vy(); // vf is set to 1 when there's a carry, and 0 otherwise
+    void subtract_vx_vy(); // vf is set to 0 when there's a borrow, and 1 otherwise
     void shift_vx_right_by_one_8xy6(); // vf is set to the value of the least significant bit of vx before the shift
     void set_vx_to_vy_minus_vx_8xy7(); // vf is set to 0 when there's a borrow, and 1 otherwise
     void shift_vx_left_by_one_8xye(); // vf is set to the value of the most significant bit of vx before the shift
     void skip_next_instruction_if_vx_equals_vy_9xy0();
     void set_i_to_address_annn();
+    void draw_dxyn();
+    void skip_next_instruction_if_key_pressed();
+    void skip_next_instruction_if_key_not_pressed();
+    void set_vx_to_delay_timer();
+    void get_key();
+    void set_delay_timer_to_vx();
+    void set_sound_timer_to_vx();
+    void add_i_and_vx();
+    void get_sprite_from_vx();
+    void store_bcd_number();
+    void copy_reg();
+    void read_reg();
 };
 
 #endif //UNTITLED_CPU_H

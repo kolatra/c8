@@ -2,6 +2,8 @@
 #include <cstring>
 #include <fstream>
 #include <vector>
+#include <bitset>
+#include <algorithm>
 #include "cpu.h"
 
 void CPU::init() {
@@ -43,7 +45,7 @@ bool CPU::load_game(const char* name) {
     }
 }
 
-void CPU::lie_to_the_people() {
+void CPU::single_cycle() {
     /**
      * fetch opcode from the memory at the location stored in the program counter
      * data is stored in an array in which each address contains one byte
@@ -58,17 +60,6 @@ void CPU::lie_to_the_people() {
      * 10100010   1010001000000000     BIN
      */
     opcode = memory[pc] << 8 | memory[pc + 1];
-    pc += 2;
-
-    if (trace && (opcode & 0xF000) != 0x0000) {
-        printf("pc: %.4X opcode: %.4X sp: %.2X ", pc, opcode, sp);
-        printf("I: %.4X ", I);
-        printf("%s", "registers: ");
-        for (int i = 0; i < 15; i++)
-            printf("%.2X ", V[i]);
-
-        printf("\n");
-    }
 
     // parse opcode and execute
     switch (opcode & 0xF000) {
@@ -77,144 +68,188 @@ void CPU::lie_to_the_people() {
                 case 0x00E0:
                     clear_display();
                     break;
+
                 case 0x00EE:
                     return_from_subroutine_00ee();
                     break;
+
                 default:
                     break;
             }
             break;
+
         case 0x1000:
             jump_to_address_1nnn();
             break;
+
         case 0x2000:
-            //call_subroutine_at_address_2nnn();
+            call_subroutine_at_address_2nnn();
             break;
-        case 0x3000:
-            //skip_next_instruction_if_vx_equals_3xnn();
-            pc += 2;
+
+        case 0x3000: {
+            skip_next_instruction_if_vx_equals_3xnn();
             break;
+        }
+
         case 0x4000:
-            I = opcode & 0x0FFF;
-            pc += 2;
+            skip_next_instruction_if_vx_not_equals_4xnn();
             break;
-        case 0x5000:
-            //skip_next_instruction_if_vx_equals_vy();
-            pc += 2;
+
+        case 0x5000: {
+            skip_next_instruction_if_vx_equals_5xy0();
             break;
+        }
+
         case 0x6000:
             set_vx_to_nn_6xnn();
             break;
+
         case 0x7000:
             add_nn_to_vx_7xnn();
             break;
+
         case 0x8000:
             switch (opcode & 0x000F) {
                 case 0x0000:
-                    //set_vx_to_vx();
+                    set_vx();
                     break;
+
                 case 0x0001:
-                    //set_vx_to_vx_or_vx();
+                    or_vx_vy();
                     break;
+
                 case 0x0002:
-                    //set_vx_to_vx_and_vx();
+                    and_vx_vy();
                     break;
+
                 case 0x0003:
-                    //set_vx_to_vx_xor_vx();
+                    xor_vx_vy();
                     break;
+
                 case 0x0004:
-                    //add_vx_to_vx();
+                    add_vx_vy();
                     break;
+
                 case 0x0005:
-                    //subtract_vx_from_vx();
+                    subtract_vx_vy();
                     break;
+
                 case 0x0006:
                     shift_vx_right_by_one_8xy6();
                     break;
+
                 case 0x0007:
-                    //set_vx_to_vx_minus_vx();
+                    set_vx_to_vy_minus_vx_8xy7();
                     break;
+
                 case 0x000E:
                     shift_vx_left_by_one_8xye();
                     break;
+
                 default:
                     break;
+
             }
             break;
+
         case 0x9000:
-            //skip_next_instruction_if_vx_not_equals_vy();
-            pc += 2;
+            skip_next_instruction_if_vx_equals_vy_9xy0();
             break;
+
         case 0xA000:
             set_i_to_address_annn();
             break;
+
         case 0xB000:
             //jump_to_address_annn_plus_v0();
             break;
+
         case 0xC000:
             //set_vx_to_random_number_and_bit_mask_nnn();
             break;
+
         case 0xD000:
             draw_dxyn();
             break;
+
         case 0xE000:
             switch (opcode & 0x00FF) {
                 case 0x009E:
-                    //skip_next_instruction_if_key_pressed_vx();
-                    pc += 2;
+                    skip_next_instruction_if_key_pressed();
                     break;
                 case 0x00A1:
-                    //skip_next_instruction_if_key_not_pressed_vx();
-                    pc += 2;
+                    skip_next_instruction_if_key_not_pressed();
                     break;
                 default:
                     break;
             }
             break;
+
         case 0xF000:
             switch (opcode & 0x00FF) {
                 case 0x0007:
-                    //set_vx_to_delay_timer();
+                    set_vx_to_delay_timer();
                     break;
+
                 case 0x000A:
-                    //wait_for_key_press_and_store_in_vx();
+                    get_key();
                     break;
+
                 case 0x0015:
-                    //set_delay_timer_to_vx();
+                    set_delay_timer_to_vx();
                     break;
+
                 case 0x0018:
-                    //set_sound_timer_to_vx();
+                    set_sound_timer_to_vx();
                     break;
+
                 case 0x001E:
-                    //add_vx_to_i();
+                    add_i_and_vx();
                     break;
+
                 case 0x0029:
-                    //set_i_to_sprite_location_of_vx();
+                    get_sprite_from_vx();
                     break;
+
                 case 0x0033:
-                    //store_bcd_representation_of_vx_in_i_i_plus_1_and_i_i_plus_2();
+                    store_bcd_number();
                     break;
+
                 case 0x0055:
-                    //store_registers_in_memory_starting_at_i();
+                    copy_reg();
                     break;
+
                 case 0x0065:
-                    //load_registers_from_memory_starting_at_i();
+                    read_reg();
                     break;
+
                 default:
                     break;
             }
             break;
+
         default:
             printf("Unknown opcode: 0x%X\n", opcode);
             break;
+    }
+
+    pc += 2;
+
+    if (trace && (opcode & 0xFFFF) != 0x0000) {
+        printf("pc: %.4X / opcode: %.4X / sp: %.2X ", pc, opcode, sp);
+        printf("/ index: %.4X ", I);
+        printf("%s", "/ registers: ");
+        for (int i = 0; i < 15; i++)
+            printf("%.2X ", V[i]);
+
+        printf("\n");
     }
 
     if (delay_timer > 0)
         --delay_timer;
 
     if (sound_timer > 0) {
-        if (sound_timer == 1)
-            printf("BEEP!\n");
+        printf("BEEP!\n");
         --sound_timer;
     }
 }
@@ -228,25 +263,40 @@ void CPU::clear_display() {
     draw_flag = true;
 }
 
-void CPU::set_i_to_address_annn() {
-    I = opcode & 0x0FFF;
-}
-
-void CPU::call_routine_at_address_0nnn() {}
-
 void CPU::return_from_subroutine_00ee() {
-    sp--;
     pc = stack[sp];
+    sp--;
 }
 
 void CPU::jump_to_address_1nnn() {
+    pc = opcode & 0x0FFF;
+}
+
+void CPU::call_subroutine_at_address_2nnn() {
     stack[sp] = pc;
     sp++;
     pc = opcode & 0x0FFF;
 }
 
-void CPU::call_subroutine_at_address_2nnn() {
+void CPU::skip_next_instruction_if_vx_equals_3xnn() {
+    int vx = (opcode&0x0F00);
+    int nn = (opcode&0x00FF);
+    if (vx == nn)
+        pc += 2;
+}
 
+void CPU::skip_next_instruction_if_vx_not_equals_4xnn() {
+    int vx = (opcode&0x0F00);
+    int nn = (opcode&0x00FF);
+    if (vx != nn)
+        pc += 2;
+}
+
+void CPU::skip_next_instruction_if_vx_equals_5xy0() {
+    int vx = (opcode&0x0F00);
+    int nn = (opcode&0x00F0);
+    if (vx == nn)
+        pc += 2;
 }
 
 void CPU::set_vx_to_nn_6xnn() {
@@ -255,6 +305,51 @@ void CPU::set_vx_to_nn_6xnn() {
 
 void CPU::add_nn_to_vx_7xnn() {
     V[opcode & 0x0F00] += opcode & 0x00FF;
+}
+
+void CPU::set_vx() {
+    V[opcode & 0x0F00] = V[opcode & 0x00F0];
+}
+
+void CPU::or_vx_vy() {
+    V[opcode & 0x0F00] |= V[opcode & 0x00F0];
+}
+
+void CPU::and_vx_vy() {
+    V[opcode & 0x0F00] &= V[opcode & 0x00F0];
+}
+
+void CPU::xor_vx_vy() {
+    V[opcode & 0x0F00] ^= V[opcode & 0x00F0];
+}
+
+void CPU::add_vx_vy() {
+    V[opcode & 0x0F00] += V[opcode & 0x00F0];
+}
+
+void CPU::subtract_vx_vy() {
+    V[opcode & 0x0F00] -= V[opcode & 0x00F0];
+}
+
+void CPU::shift_vx_right_by_one_8xy6() {
+    V[opcode & 0x0F00] >>= 1;
+}
+
+void CPU::set_vx_to_vy_minus_vx_8xy7() {
+    V[opcode & 0x0F00] = V[opcode & 0x00F0] - V[opcode & 0x0F00];
+}
+
+void CPU::shift_vx_left_by_one_8xye() {
+    V[opcode & 0x0F00] <<= 1;
+}
+
+void CPU::skip_next_instruction_if_vx_equals_vy_9xy0() {
+    if (V[opcode & 0x0F00] == V[opcode & 0x00F0])
+        pc += 2;
+}
+
+void CPU::set_i_to_address_annn() {
+    I = opcode & 0x0FFF;
 }
 
 void CPU::draw_dxyn() {
@@ -275,10 +370,68 @@ void CPU::draw_dxyn() {
     draw_flag = true;
 }
 
-void CPU::shift_vx_left_by_one_8xye() {
-    V[opcode & 0x0F00] <<= 1;
+void CPU::skip_next_instruction_if_key_pressed() {
+    // if (key() == VX)
 }
 
-void CPU::shift_vx_right_by_one_8xy6() {
-    V[opcode & 0x0F00] >>= 1;
+void CPU::skip_next_instruction_if_key_not_pressed() {
+    // if (key() != VX)
+}
+
+void CPU::set_vx_to_delay_timer() {
+    V[opcode & 0x0F00] = delay_timer;
+}
+
+void CPU::get_key() { // TODO
+    int key = getchar();
+    V[opcode & 0x0F00] = key;
+}
+
+void CPU::set_delay_timer_to_vx() {
+    delay_timer = V[opcode & 0x0F00];
+}
+
+void CPU::set_sound_timer_to_vx() {
+    sound_timer = V[opcode & 0x0F00];
+}
+
+void CPU::add_i_and_vx() {
+    I += I + V[opcode & 0x0F00];
+}
+
+void CPU::get_sprite_from_vx() {
+    I = fontset[V[opcode & 0x0F00]];
+}
+
+// TODO keep an eye on this
+void CPU::store_bcd_number() {
+    int num = opcode & 0x0F00;
+    std::vector<std::bitset<4>> repr;
+    while(num > 0){
+        repr.emplace_back(num % 10);
+        num /= 10;
+    }
+    std::reverse(repr.begin(), repr.end());
+    memset(&I,   repr[0].to_ulong(), sizeof(repr[0]));
+    memset(&I+1, repr[1].to_ulong(), sizeof(repr[1]));
+    memset(&I+2, repr[2].to_ulong(), sizeof(repr[2]));
+}
+
+void CPU::copy_reg() {
+    // Store registers V0 through Vx in memory starting at location I.
+    // The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I.
+    int bound = (opcode & 0x0F00);
+    for (int i = 0; i < bound; i++) {
+        int addr = I + i;
+        memset(&addr, V[i], sizeof(V[i]));
+    }
+}
+
+void CPU::read_reg() {
+    // Read registers V0 through Vx from memory starting at location I.
+    // The interpreter reads values from memory starting at location I into registers V0 through Vx.
+    int bound = (opcode & 0x0F00);
+    for (int i = 0; i < bound; i++) {
+        V[i] = I + i;
+    }
 }
