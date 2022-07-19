@@ -161,11 +161,11 @@ void CPU::single_cycle() {
             break;
 
         case 0xB000:
-            //jump_to_address_annn_plus_v0();
+            jump_to_nnn_v0();
             break;
 
         case 0xC000:
-            //set_vx_to_random_number_and_bit_mask_nnn();
+            rand_vx();
             break;
 
         case 0xD000:
@@ -350,6 +350,14 @@ void CPU::skip_next_instruction_if_vx_equals_vy_9xy0() {
 
 void CPU::set_i_to_address_annn() {
     I = opcode & 0x0FFF;
+}
+
+void CPU::jump_to_nnn_v0() {
+    pc = (opcode & 0x0FFF) + V[0];
+}
+
+void CPU::rand_vx() {
+    V[opcode & 0x0F00] = (rand() % 256) & (opcode & 0x00FF);
 }
 
 void CPU::draw_dxyn() {

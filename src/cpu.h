@@ -88,6 +88,8 @@ private: // TODO make all of these names better
     void shift_vx_left_by_one_8xye(); // vf is set to the value of the most significant bit of vx before the shift
     void skip_next_instruction_if_vx_equals_vy_9xy0();
     void set_i_to_address_annn();
+    void jump_to_nnn_v0();
+    void rand_vx();
     void draw_dxyn();
     void skip_next_instruction_if_key_pressed();
     void skip_next_instruction_if_key_not_pressed();
