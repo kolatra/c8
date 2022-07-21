@@ -12,9 +12,9 @@ void CPU::init() {
     I      = 0;
     sp     = 0;
 
-    memset(gfx, 0, sizeof(gfx));
-    memset(V, 0, sizeof(V));
-    memset(stack, 0, sizeof(stack));
+    memset(gfx,    0, sizeof(gfx));
+    memset(V,      0, sizeof(V));
+    memset(stack,  0, sizeof(stack));
     memset(memory, 0, sizeof(memory));
 
     for (int i = 0; i < 80; ++i) {
@@ -29,7 +29,7 @@ bool CPU::load_game(const char* name) {
     std::ifstream file(name, std::ios::binary | std::ios::ate);
     if (file.is_open()) {
         std::streampos size = file.tellg();
-        char buffer [4096];
+        char buffer[4096];
 
         file.seekg(0, std::ios::beg);
         file.read(buffer, size);
@@ -54,12 +54,20 @@ void CPU::single_cycle() {
      * memory[pc]     == 0xA2
      * memory[pc + 1] == 0xF0
      *
-     * 0xA2 was shifted left 8 bits, which adds 8 zeroes
+     * 0xA2 was shifted left 8 bits, which adds 8 zeroes,
+     * and increases the byte address by 1
      *
-     * 0xA2       0xA2 << 8 = 0xA200   HEX
-     * 10100010   1010001000000000     BIN
+     * 0xA2       HEX
+     * 1010 0010  BIN
+     * 0xF0       HEX
+     * 1111 0000  BIN
+     *
+     * 0xA2   << 8    = 0xA200   1010 0010 0000 0000
+     * 0xA200 OR 0xF0 = 0xA2F0   1010 0010 1111 0000
      */
     opcode = memory[pc] << 8 | memory[pc + 1];
+
+    pc += 2;
 
     // parse opcode and execute
     switch (opcode & 0xF000) {
@@ -86,19 +94,17 @@ void CPU::single_cycle() {
             call_subroutine_at_address_2nnn();
             break;
 
-        case 0x3000: {
+        case 0x3000:
             skip_next_instruction_if_vx_equals_3xnn();
             break;
-        }
 
         case 0x4000:
             skip_next_instruction_if_vx_not_equals_4xnn();
             break;
 
-        case 0x5000: {
+        case 0x5000:
             skip_next_instruction_if_vx_equals_5xy0();
             break;
-        }
 
         case 0x6000:
             set_vx_to_nn_6xnn();
@@ -233,8 +239,6 @@ void CPU::single_cycle() {
             break;
     }
 
-    pc += 2;
-
     if (trace && (opcode & 0xFFFF) != 0x0000) {
         printf("pc: %.4X / opcode: %.4X / sp: %.2X ", pc, opcode, sp);
         printf("/ index: %.4X ", I);
@@ -279,72 +283,72 @@ void CPU::call_subroutine_at_address_2nnn() {
 }
 
 void CPU::skip_next_instruction_if_vx_equals_3xnn() {
-    int vx = (opcode&0x0F00);
+    int vx = (opcode&0x0F00) >> 8;
     int nn = (opcode&0x00FF);
-    if (vx == nn)
+    if (V[vx] == nn)
         pc += 2;
 }
 
 void CPU::skip_next_instruction_if_vx_not_equals_4xnn() {
-    int vx = (opcode&0x0F00);
+    int vx = (opcode&0x0F00) >> 8;
     int nn = (opcode&0x00FF);
-    if (vx != nn)
+    if (V[vx] != nn)
         pc += 2;
 }
 
 void CPU::skip_next_instruction_if_vx_equals_5xy0() {
-    int vx = (opcode&0x0F00);
-    int nn = (opcode&0x00F0);
-    if (vx == nn)
+    int vx = (opcode&0x0F00) >> 8;
+    int nn = (opcode&0x00F0) >> 4;
+    if (V[vx] == V[nn])
         pc += 2;
 }
 
 void CPU::set_vx_to_nn_6xnn() {
-    V[opcode & 0x0F00] = opcode & 0x00FF;
+    V[opcode & 0x0F00 >> 8] = opcode & 0x00FF;
 }
 
 void CPU::add_nn_to_vx_7xnn() {
-    V[opcode & 0x0F00] += opcode & 0x00FF;
+    V[opcode & 0x0F00 >> 8] += opcode & 0x00FF;
 }
 
 void CPU::set_vx() {
-    V[opcode & 0x0F00] = V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] = V[opcode & 0x00F0];
 }
 
 void CPU::or_vx_vy() {
-    V[opcode & 0x0F00] |= V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] |= V[opcode & 0x00F0];
 }
 
 void CPU::and_vx_vy() {
-    V[opcode & 0x0F00] &= V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] &= V[opcode & 0x00F0 >> 4];
 }
 
 void CPU::xor_vx_vy() {
-    V[opcode & 0x0F00] ^= V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] ^= V[opcode & 0x00F0 >> 4];
 }
 
 void CPU::add_vx_vy() {
-    V[opcode & 0x0F00] += V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] += V[opcode & 0x00F0 >> 4];
 }
 
 void CPU::subtract_vx_vy() {
-    V[opcode & 0x0F00] -= V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] -= V[opcode & 0x00F0 >> 4];
 }
 
 void CPU::shift_vx_right_by_one_8xy6() {
-    V[opcode & 0x0F00] >>= 1;
+    V[opcode & 0x0F00 >> 8] >>= 1;
 }
 
 void CPU::set_vx_to_vy_minus_vx_8xy7() {
-    V[opcode & 0x0F00] = V[opcode & 0x00F0] - V[opcode & 0x0F00];
+    V[opcode & 0x0F00 >> 8] = V[opcode & 0x00F0 >> 4] - V[opcode & 0x0F00 >> 8];
 }
 
 void CPU::shift_vx_left_by_one_8xye() {
-    V[opcode & 0x0F00] <<= 1;
+    V[opcode & 0x0F00 >> 8] <<= 1;
 }
 
 void CPU::skip_next_instruction_if_vx_equals_vy_9xy0() {
-    if (V[opcode & 0x0F00] == V[opcode & 0x00F0])
+    if (V[opcode & 0x0F00] == V[opcode & 0x00F0 >> 4])
         pc += 2;
 }
 
@@ -365,8 +369,8 @@ void CPU::draw_dxyn() {
     // starting from memory location I; I value does not change after the execution of this instruction.
     // As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn,
     // and to 0 if that does not happen
-    int x = V[opcode & 0x0F00 >> 8];
-    int y = V[opcode & 0x00F0 >> 4];
+    int x = V[opcode & 0x0F00 >> 8] % 64;
+    int y = V[opcode & 0x00F0 >> 4] % 32;
     int height = (opcode & 0x000F);
 
     for (int i = 0; i < height; i++) {
@@ -404,7 +408,7 @@ void CPU::set_sound_timer_to_vx() {
 }
 
 void CPU::add_i_and_vx() {
-    I += I + V[opcode & 0x0F00];
+    I += V[opcode & 0x0F00];
 }
 
 void CPU::get_sprite_from_vx() {

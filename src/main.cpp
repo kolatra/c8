@@ -5,9 +5,8 @@
 #include <algorithm>
 
 CPU cpu;
-bool running = true;
 
-int main(int argc, char **argv) {
+int main(int argc, char* argv[]) {
     std::cout << "starting with " << argc << " arguments\n";
     cpu.init();
     if (!cpu.load_game("PONG.ch8")) {
@@ -15,20 +14,29 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    auto lastCycle = std::chrono::high_resolution_clock::now();
+    bool running = true;
+    int cycleDelay = 4;
+
     while (running) {
-        cpu.single_cycle();
+        //running = check for escape key
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        float dt = std::chrono::duration<float, std::chrono::milliseconds::period>(currentTime - lastCycle).count();
+        if (dt > cycleDelay) {
+            lastCycle = currentTime;
+            cpu.single_cycle();
+            cpu.set_keys();
 
-        if (cpu.draw_flag) {
-            std::cout << "drawing screen" << std::endl;
-            cpu.draw_flag = false;
-        }
+            if (cpu.draw_flag) {
+                std::cout << "drawing screen" << std::endl;
+                cpu.draw_flag = false;
+            }
 
-        cpu.set_keys();
-        std::this_thread::sleep_for(std::chrono::seconds(1 / 50));
-
-        if (cpu.pause_execution) {
-            system("pause");
+            if (cpu.pause_execution) {
+                system("pause");
+            }
         }
     }
+
     return 0;
 }

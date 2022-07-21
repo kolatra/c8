@@ -61,8 +61,8 @@ class CPU {
     bool     draw_flag;
     bool     trace = true;
     bool     pause_execution = false;
-    void     init();
     bool     load_game(const char* name);
+    void     init();
     void     single_cycle();
     void     set_keys();
 
