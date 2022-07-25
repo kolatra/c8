@@ -14,7 +14,7 @@ public:
     void handle_input(uint8_t* keys);
 
 private:
-    SDL_Window* window {};
-    SDL_Renderer* renderer {};
-    SDL_Texture* texture {};
+    SDL_Window* window;
+    SDL_Renderer* renderer;
+    SDL_Texture* texture;
 };

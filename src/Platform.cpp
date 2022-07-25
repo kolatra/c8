@@ -25,5 +25,9 @@ void Platform::update(void const* buffer, int pitch) {
 }
 
 void Platform::handle_input(uint8_t *keys) {
+    SDL_Event event;
 
+    while (SDL_PollEvent(&event)) {
+
+    }
 }

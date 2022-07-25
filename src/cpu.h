@@ -51,21 +51,19 @@ class CPU {
     uint16_t I;  // index register
     uint16_t stack[16];
     uint16_t opcode;
+    uint16_t gfx[64 * 32]; // 2048 pixels in total on screen
     uint8_t  sp;
     uint8_t  V[16]; // 8-bit v0-vF registers
     uint8_t  memory[4096];
     uint8_t  delay_timer;
     uint8_t  sound_timer;
-    int      gfx[64 * 32]; // 2048 pixels in total on screen
-    int      keypad[16];   // values are 0-F
+    uint8_t  keypad[16];   // values are 0-F
     bool     draw_flag;
     bool     trace = true;
     bool     pause_execution = false;
     bool     load_game(const char* name);
     void     init();
     void     single_cycle();
-    void     set_keys();
-
 
 private: // TODO make all of these names better
     void clear_display();
@@ -85,7 +83,7 @@ private: // TODO make all of these names better
     void subtract_vx_vy(); // vf is set to 0 when there's a borrow, and 1 otherwise
     void shift_vx_right_by_one_8xy6(); // vf is set to the value of the least significant bit of vx before the shift
     void set_vx_to_vy_minus_vx_8xy7(); // vf is set to 0 when there's a borrow, and 1 otherwise
-    void shift_vx_left_by_one_8xye(); // vf is set to the value of the most significant bit of vx before the shift
+    void op_8xye(); // vf is set to the value of the most significant bit of vx before the shift
     void skip_next_instruction_if_vx_equals_vy_9xy0();
     void set_i_to_address_annn();
     void jump_to_nnn_v0();

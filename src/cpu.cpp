@@ -1,10 +1,11 @@
 #include <iostream>
 #include <cstring>
 #include <fstream>
-#include <vector>
 #include <bitset>
 #include <algorithm>
 #include "cpu.h"
+
+int cycles = 0;
 
 void CPU::init() {
     pc     = 0x200;
@@ -149,7 +150,7 @@ void CPU::single_cycle() {
                     break;
 
                 case 0x000E:
-                    shift_vx_left_by_one_8xye();
+                    op_8xye();
                     break;
 
                 default:
@@ -240,6 +241,8 @@ void CPU::single_cycle() {
     }
 
     if (trace && (opcode & 0xFFFF) != 0x0000) {
+        cycles++;
+        printf("%d: ", cycles);
         printf("pc: %.4X / opcode: %.4X / sp: %.2X ", pc, opcode, sp);
         printf("/ index: %.4X ", I);
         printf("%s", "/ registers: ");
@@ -256,10 +259,6 @@ void CPU::single_cycle() {
         printf("BEEP!\n");
         --sound_timer;
     }
-}
-
-void CPU::set_keys() {
-
 }
 
 void CPU::clear_display() {
@@ -312,11 +311,11 @@ void CPU::add_nn_to_vx_7xnn() {
 }
 
 void CPU::set_vx() {
-    V[opcode & 0x0F00 >> 8] = V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] = V[opcode & 0x00F0 >> 4];
 }
 
 void CPU::or_vx_vy() {
-    V[opcode & 0x0F00 >> 8] |= V[opcode & 0x00F0];
+    V[opcode & 0x0F00 >> 8] |= V[opcode & 0x00F0 >> 4];
 }
 
 void CPU::and_vx_vy() {
@@ -328,27 +327,55 @@ void CPU::xor_vx_vy() {
 }
 
 void CPU::add_vx_vy() {
-    V[opcode & 0x0F00 >> 8] += V[opcode & 0x00F0 >> 4];
+    int x = opcode & 0x0f00 >> 8;
+    int y = opcode & 0x00f0 >> 4;
+    int result = x + y;
+    V[0xf] = result > 0xffffu;
+    V[x] = result & 0xff;
 }
 
 void CPU::subtract_vx_vy() {
-    V[opcode & 0x0F00 >> 8] -= V[opcode & 0x00F0 >> 4];
+    int x = opcode & 0x0f00 >> 8;
+    int y = opcode & 0x00f0 >> 4;
+    int result = x - y;
+    V[0xf] = V[x] > V[y];
+    V[x] = result;
 }
 
 void CPU::shift_vx_right_by_one_8xy6() {
-    V[opcode & 0x0F00 >> 8] >>= 1;
+    int x = opcode & 0x0F00 >> 8;
+    V[0xf] = (V[x] & 0x1);
+    V[x] >>= 1;
 }
 
 void CPU::set_vx_to_vy_minus_vx_8xy7() {
-    V[opcode & 0x0F00 >> 8] = V[opcode & 0x00F0 >> 4] - V[opcode & 0x0F00 >> 8];
+    int x = opcode & 0x0f00 >> 8;
+    int y = opcode & 0x00f0 >> 4;
+    int result = y - x;
+    V[0xf] = V[y] > V[x];
+    V[x] = result;
 }
 
-void CPU::shift_vx_left_by_one_8xye() {
-    V[opcode & 0x0F00 >> 8] <<= 1;
+void CPU::op_8xye() { // shift Vx left by 1, storing the most significant bit in VF
+    int x = opcode & 0x0F00 >> 8;
+    int n = V[x];
+    int msb = 0;
+
+    if (n != 0) {
+        n = n/2;
+        while (n != 0) {
+            n = n/2;
+            msb++;
+        }
+        msb <<= 1;
+    }
+
+    V[0xf] = msb;
+    V[x] <<= 1;
 }
 
 void CPU::skip_next_instruction_if_vx_equals_vy_9xy0() {
-    if (V[opcode & 0x0F00] == V[opcode & 0x00F0 >> 4])
+    if (V[opcode & 0x0F00 >> 8] == V[opcode & 0x00F0 >> 4])
         pc += 2;
 }
 
@@ -361,44 +388,56 @@ void CPU::jump_to_nnn_v0() {
 }
 
 void CPU::rand_vx() {
-    V[opcode & 0x0F00] = (rand() % 256) & (opcode & 0x00FF);
+    V[opcode & 0x0F00 >> 8] = (rand() % 256) & (opcode & 0x00FF);
 }
 
 void CPU::draw_dxyn() {
-    // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels. Each row of 8 pixels is read as bit-coded
-    // starting from memory location I; I value does not change after the execution of this instruction.
-    // As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn,
-    // and to 0 if that does not happen
     int x = V[opcode & 0x0F00 >> 8] % 64;
     int y = V[opcode & 0x00F0 >> 4] % 32;
-    int height = (opcode & 0x000F);
-
-    for (int i = 0; i < height; i++) {
-        for (int j = -4; i < 4; i++) {
-
+    int n = (opcode & 0x000F);
+    V[0xf] = 0;
+    for (int i = I; i < n; i++) {
+        uint8_t sprite_data = memory[i];
+        for (int j = 0; j < 8; j++) {
+            uint8_t sprite_bit = sprite_data & (0x80 >> j);
+            uint8_t pixel = gfx[x + j + (y + i) * 64];
+            if (pixel == 0 && sprite_bit != 0) {
+                V[0xf] = 1;
+            }
+            gfx[x + j + (y + i) * 64] ^= sprite_bit;
         }
     }
-
     draw_flag = true;
+    //pause_execution = true;
 }
 
 void CPU::skip_next_instruction_if_key_pressed() {
-    // if (key() == VX)
+    int key = (opcode & 0x0F00) >> 8;
+    if (!keypad[key])
+        pc += 2;
 }
 
 void CPU::skip_next_instruction_if_key_not_pressed() {
-    // if (key() != VX)
+    int key = (opcode & 0x0F00) >> 8;
+    if (!keypad[key])
+        pc += 2;
 }
 
 void CPU::set_vx_to_delay_timer() {
-    V[opcode & 0x0F00] = delay_timer;
+    V[opcode & 0x0F00 >> 8] = delay_timer;
 }
 
-void CPU::get_key() { // TODO
-    int key = getchar();
-    V[opcode & 0x0F00] = key;
+void CPU::get_key() {
+    int x = (opcode & 0x0F00) >> 8;
+    bool waiting = true;
+    for (int i = 0; i < 0xf; i++) {
+        if (keypad[i]) {
+            V[x] = i;
+            waiting = false;
+        }
+    }
+    if (waiting) pc -= 2;
 }
-
 void CPU::set_delay_timer_to_vx() {
     delay_timer = V[opcode & 0x0F00];
 }
@@ -415,18 +454,11 @@ void CPU::get_sprite_from_vx() {
     I = fontset[V[opcode & 0x0F00]];
 }
 
-// TODO keep an eye on this
 void CPU::store_bcd_number() {
-    int num = opcode & 0x0F00;
-    std::vector<std::bitset<4>> repr;
-    while(num > 0){
-        repr.emplace_back(num % 10);
-        num /= 10;
-    }
-    std::reverse(repr.begin(), repr.end());
-    memset(&I,   repr[0].to_ulong(), sizeof(repr[0]));
-    memset(&I+1, repr[1].to_ulong(), sizeof(repr[1]));
-    memset(&I+2, repr[2].to_ulong(), sizeof(repr[2]));
+    int num = opcode & 0x0f00 >> 8;
+    memory[I] = (num/100)%10;
+    memory[I+1] = (num/10)%10;
+    memory[I+2] = num%10;
 }
 
 void CPU::copy_reg() {
