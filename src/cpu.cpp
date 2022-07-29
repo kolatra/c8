@@ -5,7 +5,9 @@
 #include <algorithm>
 #include "cpu.h"
 
-int cycles = 0;
+void CPU::toggle_pause() {
+    pause_execution ^= true;
+}
 
 void CPU::init() {
     pc     = 0x200;
@@ -67,6 +69,20 @@ void CPU::single_cycle() {
      * 0xA200 OR 0xF0 = 0xA2F0   1010 0010 1111 0000
      */
     opcode = memory[pc] << 8 | memory[pc + 1];
+
+    // TODO current issue, instruction should be 7008 but we get 1228
+
+    if (trace && (opcode & 0xFFFF) != 0x0000) {
+        cycles++;
+        printf("%d: ", cycles);
+        printf("pc: %.4X / opcode: %.4X / sp: %.2X ", pc, opcode, sp);
+        printf("/ index: %.4X ", I);
+        printf("%s", "/ registers: ");
+        for (int i = 0; i < 15; i++)
+            printf("%.2X ", V[i]);
+
+        printf("\n");
+    }
 
     pc += 2;
 
@@ -154,6 +170,7 @@ void CPU::single_cycle() {
                     break;
 
                 default:
+                    printf("Unknown opcode: 0x%X\n", opcode);
                     break;
 
             }
@@ -188,6 +205,7 @@ void CPU::single_cycle() {
                     skip_next_instruction_if_key_not_pressed();
                     break;
                 default:
+                    printf("Unknown opcode: 0x%X\n", opcode);
                     break;
             }
             break;
@@ -231,6 +249,7 @@ void CPU::single_cycle() {
                     break;
 
                 default:
+                    printf("Unknown opcode: 0x%X\n", opcode);
                     break;
             }
             break;
@@ -238,18 +257,6 @@ void CPU::single_cycle() {
         default:
             printf("Unknown opcode: 0x%X\n", opcode);
             break;
-    }
-
-    if (trace && (opcode & 0xFFFF) != 0x0000) {
-        cycles++;
-        printf("%d: ", cycles);
-        printf("pc: %.4X / opcode: %.4X / sp: %.2X ", pc, opcode, sp);
-        printf("/ index: %.4X ", I);
-        printf("%s", "/ registers: ");
-        for (int i = 0; i < 15; i++)
-            printf("%.2X ", V[i]);
-
-        printf("\n");
     }
 
     if (delay_timer > 0)
@@ -303,7 +310,14 @@ void CPU::skip_next_instruction_if_vx_equals_5xy0() {
 }
 
 void CPU::set_vx_to_nn_6xnn() {
-    V[opcode & 0x0F00 >> 8] = opcode & 0x00FF;
+    uint16_t Vx = opcode & 0x0F00u >> 8;
+    uint16_t nn = opcode & 0x00FFu;
+    printf("opcode: 0x%X\n", opcode);
+    printf("Vx:     %d (0x%X)\n", Vx, Vx);
+    printf("Vx:     %s\n", std::bitset<16>(Vx).to_string().c_str());
+    printf("nn:     %d (0x%X)\n", nn, nn);
+    printf("nn:     %s\n", std::bitset<16>(nn).to_string().c_str());
+    V[Vx] = nn;
 }
 
 void CPU::add_nn_to_vx_7xnn() {
@@ -356,7 +370,7 @@ void CPU::set_vx_to_vy_minus_vx_8xy7() {
     V[x] = result;
 }
 
-void CPU::op_8xye() { // shift Vx left by 1, storing the most significant bit in VF
+void CPU::op_8xye() {
     int x = opcode & 0x0F00 >> 8;
     int n = V[x];
     int msb = 0;
@@ -392,23 +406,46 @@ void CPU::rand_vx() {
 }
 
 void CPU::draw_dxyn() {
-    int x = V[opcode & 0x0F00 >> 8] % 64;
-    int y = V[opcode & 0x00F0 >> 4] % 32;
-    int n = (opcode & 0x000F);
+    int m = opcode & 0x0F00;
+    int n = opcode & 0x00F0;
+    /*std::cout << "m: " << m << std::hex;
+    std::cout << std::bitset<8>(m) << '\n';
+    std::cout << "n: " << n << std::hex;
+    std::cout << std::bitset<8>(n) << '\n';*/
+
+    /*uint8_t Vx = V[opcode & 0x0F00 >> 8];
+    uint8_t Vy = V[opcode & 0x00F0 >> 4];
+    uint8_t height = (opcode & 0x000F);
+
+    uint8_t x = Vx & video_width;
+    uint8_t y = Vy & video_height;*/
+
+    uint8_t Vx = (opcode & 0x0F00) >> 8;
+    uint8_t Vy = (opcode & 0x00F0) >> 4;
+    uint8_t height = opcode & 0x000F;
+    uint8_t xPos = V[Vx] % video_width;
+    uint8_t yPos = V[Vy] % video_height;
+    printf("opcode: 0x%X\n", opcode);
+    printf("Drawing at x: %d, y: %d\n", xPos, yPos);
+    printf("Drawing height: %d\n", height);
+    printf("Vx: %d\n", Vx);
+    printf("Vy: %d\n", Vy);
+
     V[0xf] = 0;
-    for (int i = I; i < n; i++) {
-        uint8_t sprite_data = memory[i];
-        for (int j = 0; j < 8; j++) {
-            uint8_t sprite_bit = sprite_data & (0x80 >> j);
-            uint8_t pixel = gfx[x + j + (y + i) * 64];
-            if (pixel == 0 && sprite_bit != 0) {
-                V[0xf] = 1;
+
+    for (auto row = 0; row < height; row++) {
+        uint8_t byte = memory[I + row];
+        for (auto column = 0; column < 8; column++) {
+            uint8_t pixel = byte & (0x80 >> column);
+            uint32_t* screen_pixel = &gfx[(yPos + row) * video_width + (xPos + column)];
+            if (pixel) {
+                if (*screen_pixel == 0xFFFFFFFF) V[0xf] = 1;
+                *screen_pixel ^= 0xFFFFFFFF;
             }
-            gfx[x + j + (y + i) * 64] ^= sprite_bit;
         }
     }
+
     draw_flag = true;
-    //pause_execution = true;
 }
 
 void CPU::skip_next_instruction_if_key_pressed() {
@@ -456,7 +493,7 @@ void CPU::get_sprite_from_vx() {
 
 void CPU::store_bcd_number() {
     int num = opcode & 0x0f00 >> 8;
-    memory[I] = (num/100)%10;
+    memory[I] =   (num/100)%10;
     memory[I+1] = (num/10)%10;
     memory[I+2] = num%10;
 }

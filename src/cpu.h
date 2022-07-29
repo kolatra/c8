@@ -47,20 +47,26 @@ class CPU {
             0xF0, 0x80, 0xF0, 0x80, 0x80  // F
     };
 
+    // TODO swap the arrays to vectors
+
+    uint32_t gfx[64 * 32]; // 2048 pixels in total on screen
     uint16_t pc; // program counter
     uint16_t I;  // index register
     uint16_t stack[16];
     uint16_t opcode;
-    uint16_t gfx[64 * 32]; // 2048 pixels in total on screen
+    uint16_t video_height = 32;
+    uint16_t video_width = 64;
+    uint16_t cycles; // max of 4096 usually
+    uint8_t  scale = 20;
     uint8_t  sp;
     uint8_t  V[16]; // 8-bit v0-vF registers
     uint8_t  memory[4096];
     uint8_t  delay_timer;
     uint8_t  sound_timer;
     uint8_t  keypad[16];   // values are 0-F
-    bool     draw_flag;
-    bool     trace = true;
-    bool     pause_execution = false;
+    bool     trace = false;
+    bool     pause_execution = true;
+    bool     draw_flag = false;
     bool     load_game(const char* name);
     void     init();
     void     single_cycle();
@@ -100,6 +106,7 @@ private: // TODO make all of these names better
     void store_bcd_number();
     void copy_reg();
     void read_reg();
+    void toggle_pause();
 };
 
 #endif //UNTITLED_CPU_H

@@ -1,26 +1,27 @@
 #include <iostream>
 #include "cpu.h"
-#include "platform.h"
+#include "display.h"
 #include <chrono>
 #include <thread>
 #include <algorithm>
 
-uint16_t video_height = 32;
-uint16_t video_width = 64;
-uint8_t  scale = 20;
-
 int main(int argc, char* argv[]) {
     std::cout << "starting with " << argc << " arguments\n";
     CPU cpu;
-    Platform platform("CHIP8 Emulator", video_width*scale, video_height*scale, video_width, video_height);
+    Display platform(
+            "CHIP8 Emulator",
+            cpu.video_width*cpu.scale,
+            cpu.video_height*cpu.scale,
+            cpu.video_width,
+            cpu.video_height);
     cpu.init();
     if (!cpu.load_game("IBM Logo.ch8")) {
         std::cout << "no game found!" << '\n';
-        return 1;
+        exit(1);
     }
 
     auto last_cycle = std::chrono::high_resolution_clock::now();
-    uint16_t pitch = sizeof(cpu.gfx[0]) * video_width;
+    uint16_t pitch = sizeof(cpu.gfx[0]) * cpu.video_width;
     uint8_t cycle_delay = 4;
 
     for (;;) {
@@ -30,19 +31,10 @@ int main(int argc, char* argv[]) {
         if (since_last > cycle_delay) {
             last_cycle = current_time;
             cpu.single_cycle();
-
             if (cpu.draw_flag) {
-                std::cout << "drawing screen" << std::endl;
+                platform.update(cpu.gfx, pitch, cpu);
                 cpu.draw_flag = false;
-            }
-
-            platform.update(cpu.gfx, pitch);
-
-            if (cpu.pause_execution) {
-                system("pause");
             }
         }
     }
-
-    return 0;
 }
