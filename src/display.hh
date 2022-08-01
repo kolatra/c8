@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SDL.h>
-#include "cpu.h"
+#include "cpu.hh"
 
 class SDL_Window;
 class SDL_Renderer;
@@ -11,7 +11,7 @@ class Display {
 public:
     Display(char const* title, int windowWidth, int windowHeight, int textureWidth, int textureHeight);
     ~Display();
-    void update(void const* buffer, int pitch, CPU cpu);
+    void update(void const* buffer, int pitch, const CPU& cpu);
     void handle_input(uint8_t* keys);
 
 private:

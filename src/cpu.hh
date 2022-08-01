@@ -1,6 +1,7 @@
 #ifndef UNTITLED_CPU_H
 #define UNTITLED_CPU_H
 #include <string>
+#include <vector>
 
 // Memory Map:
 // +---------------+= 0xFFF (4095) End of Chip-8 RAM

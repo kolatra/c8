@@ -3,11 +3,7 @@
 #include <fstream>
 #include <bitset>
 #include <algorithm>
-#include "cpu.h"
-
-void CPU::toggle_pause() {
-    pause_execution ^= true;
-}
+#include "cpu.hh"
 
 void CPU::init() {
     pc     = 0x200;
@@ -69,8 +65,6 @@ void CPU::single_cycle() {
      * 0xA200 OR 0xF0 = 0xA2F0   1010 0010 1111 0000
      */
     opcode = memory[pc] << 8 | memory[pc + 1];
-
-    // TODO current issue, instruction should be 7008 but we get 1228
 
     if (trace && (opcode & 0xFFFF) != 0x0000) {
         cycles++;
