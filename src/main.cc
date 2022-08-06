@@ -10,17 +10,17 @@ bool command_line(char** start, char** end, std::string const& argument) {
 }
 
 int main(int argc, char* argv[]) {
-    std::cout << "starting with " << argc << " arguments\n";
     CPU cpu;
     Display display(
             "CHIP8 Emulator",
-            cpu.video_width*cpu.scale,
-            cpu.video_height*cpu.scale,
-            cpu.video_width,
-            cpu.video_height);
+            cpu.m_video_width * cpu.m_scale,
+            cpu.m_video_height * cpu.m_scale,
+            cpu.m_video_width,
+            cpu.m_video_height);
     cpu.init();
-    if (!cpu.load_game("IBM Logo.ch8")) {
-        std::cout << "no game found!" << '\n';
+    std::vector<std::string> roms = { "IBM Logo.ch8", "PONG.ch8" };
+    if (!cpu.load_game(roms[1])) {
+        printf("no game found!\n");
         exit(1);
     }
 
@@ -29,7 +29,7 @@ int main(int argc, char* argv[]) {
     }
 
     auto last_cycle = std::chrono::high_resolution_clock::now();
-    uint16_t pitch = sizeof(cpu.gfx[0]) * cpu.video_width;
+    uint16_t pitch = sizeof(cpu.m_gfx[0]) * cpu.m_video_width;
     uint8_t cycle_delay = 4;
 
     for (;;) {
@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
         if (since_last > cycle_delay) {
             last_cycle = current_time;
             cpu.single_cycle();
-            display.update(cpu.gfx, pitch, cpu);
+            display.update(cpu.m_gfx, pitch, cpu);
         }
     }
 }

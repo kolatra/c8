@@ -11,7 +11,7 @@ class Display {
 public:
     Display(char const* title, int windowWidth, int windowHeight, int textureWidth, int textureHeight);
     ~Display();
-    void update(void const* buffer, int pitch, const CPU& cpu);
+    void update(std::array<uint16_t, 2048> buffer, int pitch, const CPU& cpu);
     void handle_input(uint8_t* keys);
 
 private:

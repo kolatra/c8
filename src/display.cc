@@ -16,14 +16,9 @@ Display::~Display() {
     SDL_Quit();
 }
 
-// is the type on this wrong?
-// should it be a pointer?
-// okay so far i've tried changing this type from void const* to uint16_t* (which seemed to have no effect)
-// i don't think the screen is clearing properly, because it sits on the black screen
-// with the final 8 bits(pixels) set for the entire instruction set
-void Display::update(void const* buffer, int pitch, const CPU& cpu) {
+void Display::update(std::array<uint16_t, 2048> buffer, int pitch, const CPU& cpu) {
     if (!cpu.draw_flag) return;
-    SDL_UpdateTexture(texture, nullptr, buffer, pitch);
+    SDL_UpdateTexture(texture, nullptr, &buffer, pitch);
     SDL_RenderClear(renderer);
     SDL_RenderCopy(renderer, texture, nullptr, nullptr);
     SDL_RenderPresent(renderer);
