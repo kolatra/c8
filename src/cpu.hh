@@ -1,5 +1,3 @@
-#ifndef UNTITLED_CPU_H
-#define UNTITLED_CPU_H
 #include <string>
 #include <array>
 #include "display.hh"
@@ -33,12 +31,12 @@ struct CPU {
     std::array<uint16_t, 16>   m_stack;
     std::array<uint8_t, 16>    m_registers;
     //uint16_t m_gfx[2048];
-    uint16_t m_pc; 
+    uint16_t m_eip; 
     uint16_t m_index;  
     uint16_t m_opcode;
     uint16_t m_cycles = 0;
     uint8_t  m_scale = 20;
-    uint8_t  m_sp;
+    uint8_t  m_esp;
     uint8_t  m_ram[4096];
     uint8_t  m_delay_timer;
     uint8_t  m_sound_timer;
@@ -55,5 +53,3 @@ struct CPU {
 private:
     void toggle_pause();
 };
-
-#endif //UNTITLED_CPU_H

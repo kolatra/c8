@@ -402,3 +402,4 @@ cmake-build-debug/
 ex/
 .idea/
 out/*
+build/*

@@ -5,6 +5,7 @@
 #include "display.hh"
 #include <filesystem>
 #include <iostream>
+#include <vector>
 
 bool command_line(char** start, char** end, std::string const& argument) {
     return std::find(start, end, argument) != end;
@@ -21,13 +22,15 @@ int main(int argc, char* argv[]) {
     display.clear();
     cpu.init(display);
 
-    const std::vector<std::string> roms = { "IBM Logo.ch8", "PONG.ch8", "test_opcode.ch8"};
+    std::string rom = "IBM Logo.ch8";
+    //std::string rom = "PONG.ch8";
+    //std::string rom = "test_opcode.ch8";
     constexpr int selected = 0;
-    if (!cpu.load_game(roms[selected])) {
+    if (!cpu.load_game(rom)) {
         printf("no game found!\n");
         exit(1);
     }
-    printf("Loading %s\n", roms[selected].c_str());
+    printf("Loading %s\n", rom.c_str());
 
     if (command_line(argv, argv + argc, "-p")) {
         cpu.m_pause_execution = true;
