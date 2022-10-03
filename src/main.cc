@@ -25,22 +25,20 @@ int main(int argc, char* argv[]) {
     std::string rom = "IBM Logo.ch8";
     //std::string rom = "PONG.ch8";
     //std::string rom = "test_opcode.ch8";
-    constexpr int selected = 0;
     if (!cpu.load_game(rom)) {
         printf("no game found!\n");
         exit(1);
     }
     printf("Loading %s\n", rom.c_str());
 
-    if (command_line(argv, argv + argc, "-p")) {
-        cpu.m_pause_execution = true;
-    }
+    if (command_line(argv, argv + argc, "-p")) 
+        cpu.pause_execution = true;
 
     auto last_cycle = std::chrono::high_resolution_clock::now();
     uint8_t cycle_delay = 4;
 
     for (;;) {
-        display.handle_input(cpu.m_keypad);
+        display.handle_input(cpu.keypad);
         auto current_time = std::chrono::high_resolution_clock::now();
         float since_last = std::chrono::duration<float, std::chrono::milliseconds::period>(current_time - last_cycle).count();
         if (since_last > cycle_delay) {
