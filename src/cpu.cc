@@ -17,11 +17,11 @@ void CPU::log(const char* input, ...) const {
 }
 
 void CPU::init(Display& d) {
-	display   = &d;
-    pc     = 0x200;
+	display = &d;
+    pc      = 0x200;
     opcode  = 0x0;
-    I   = 0x0;
-    sp     = 0x0;
+    I       = 0x0;
+    sp      = 0x0;
 
     memset(&d.mem, 0, sizeof(d.mem));
     memset(&V, 0, sizeof(V));
