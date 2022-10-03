@@ -89,29 +89,29 @@ void CPU::update_timers() {
 }
 
 void CPU::single_cycle() {
-    cycles++;
-    opcode = memory[pc] << 8 | memory[pc + 1];
+	cycles++;
+	opcode = memory[pc] << 8 | memory[pc + 1];
 
 	uint16_t  vx  = (opcode & 0x0f00) >> 8;
 	uint16_t  vy  = (opcode & 0x00f0) >> 4;
-    uint16_t  nnn = (opcode & 0x0fff);
+	uint16_t  nnn = (opcode & 0x0fff);
 	uint8_t   nn  = (opcode & 0x00ff);
 	uint8_t   n   = (opcode & 0x000f);
-    bool      waiting = false;
+	bool      waiting = false;
 
-    if (trace && (opcode & 0xFFFF) != 0x0000) {
-        printf("%d: ", cycles);
-        printf("m_pc: %.4X / m_opcode: %.4X / m_sp: %.2X ", pc, opcode, sp);
-        printf("/ index: %.4X ", I);
-        printf("%s", "/ registers: ");
-        for (int i = 0; i < 15; i++)
-            printf("%.2X ", V[i]);
-        printf("\n");
-    }
+	if (trace && (opcode & 0xFFFF) != 0x0000) {
+		printf("%d: ", cycles);
+		printf("m_pc: %.4X / m_opcode: %.4X / m_sp: %.2X ", pc, opcode, sp);
+		printf("/ index: %.4X ", I);
+		printf("%s", "/ registers: ");
+		for (int i = 0; i < 15; i++)
+			printf("%.2X ", V[i]);
+		printf("\n");
+	}
 
 	// TODO function pointers
 	// they're already defined in the header, I just need to make use of them rather than this atrocity
-    switch (opcode & 0xF000) {
+	switch (opcode & 0xF000) {
 		case 0x0000:
 			switch (opcode & 0x00FF) {
 				case 0x00E0: this->clear_display();          break;
