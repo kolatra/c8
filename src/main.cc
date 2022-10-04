@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
         float since_last = std::chrono::duration<float, std::chrono::milliseconds::period>(current_time - last_cycle).count();
         if (since_last > cycle_delay) {
             last_cycle = current_time;
-            cpu.single_cycle();
+            cpu.cycle();
         }
     }
 }

@@ -45,25 +45,30 @@ struct CPU {
     bool     waiting = false;
     bool     load_game(const std::string& name);
     void     init(Display& d);
-    void     log(const char* input, ...) const;
-    void     single_cycle();
+    void     log(const char* input, ...);
+    void     cycle();
     void     update_timers();
 
 private:
+	void update_pc(bool skip = false, bool pause = false);
     void toggle_pause();
-    void Table0();
-	void Table8();
-	void TableE();
-	void TableF();
+	void table0(uint16_t opcode);
+	void table8(uint16_t opcode, uint16_t vx, uint16_t vy);
+	void tableE(bool& f, uint16_t opcode, uint16_t vx);
+	void tableF(bool& f, uint16_t opcode, uint16_t vx);
+    // void Table0();
+	// void Table8();
+	// void TableE();
+	// void TableF();
 
 	void op_NULL();
 	void clear_display();
 	void return_from_subroutine();
 	void jump(uint16_t nnn);
 	void call_subroutine(uint16_t nnn);
-	void skip_if_equal_nn(uint16_t vx, uint8_t nn);
-	void skip_if_not_equal(uint16_t vx, uint8_t nn);
-	void skip_if_equal_vy(uint16_t vx, uint16_t vy);
+	void skip_if_equal_nn(bool& f, uint16_t vx, uint8_t nn);
+	void skip_if_not_equal(bool& f, uint16_t vx, uint8_t nn);
+	void skip_if_equal_vy(bool& f, uint16_t vx, uint16_t vy);
 	void set_vx(uint16_t vx, uint8_t nn);
 	void add(uint16_t vx, uint8_t nn);
 	void set_vx_vy(uint16_t vx, uint16_t vy);
@@ -80,10 +85,10 @@ private:
 	void jump_to_offset(uint16_t nnn);
 	void vx_rand(uint16_t vx, uint8_t nn);
 	void draw(uint16_t vx, uint16_t vy, uint8_t n);
-	void skip_if_pressed(uint16_t vx);
-	void skip_if_not_pressed(uint16_t vx);
+	void skip_if_pressed(bool& f, uint16_t vx);
+	void skip_if_not_pressed(bool& f, uint16_t vx);
 	void set_vx_to_delay(uint16_t vx);
-	void wait_for_key(uint16_t vx);
+	void wait_for_key(bool& f, uint16_t vx);
 	void set_delay(uint16_t vx);
 	void set_sound(uint16_t vx);
 	void add_index(uint16_t vx);
@@ -92,10 +97,11 @@ private:
 	void store(uint16_t vx);
 	void read(uint16_t vx);
 
-    typedef void (CPU::*Instruction)();
-	Instruction table[0xF + 1];
-	Instruction table0[0xE + 1];
-	Instruction table8[0xE + 1];
-	Instruction tableE[0xE + 1];
-	Instruction tableF[0x65 + 1];
+	typedef void (CPU::*Instruction)();
+	//Instruction table[0xF + 1];
+	//Instruction table0[0xE + 1];
+	//Instruction table8[0xE + 1];
+	//Instruction tableE[0xE + 1];
+	//Instruction tableF[0x65 + 1];
+	void tables();
 };
